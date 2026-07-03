@@ -8,7 +8,8 @@
     "activeTab"
   ],
   "host_permissions": [
-    "https://*/"
+    "https://power.dat.com/*",
+    "https://api.telegram.org/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -16,7 +17,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*/"
+        "https://power.dat.com/*"
       ],
       "js": [
         "content.js"
