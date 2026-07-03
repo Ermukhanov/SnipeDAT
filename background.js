@@ -1,12 +1,12 @@
 const TELEGRAM_API_BASE = "https://api.telegram.org";
-const TELEGRAM_CHAT_ID = "6561112046";
 
 async function getTelegramConfig() {
-  const { telegramBotToken } = await chrome.storage.local.get([
-    "telegramBotToken"
+  const { telegramBotToken, telegramChatId } = await chrome.storage.local.get([
+    "telegramBotToken",
+    "telegramChatId"
   ]);
 
-  return { telegramBotToken };
+  return { telegramBotToken, telegramChatId };
 }
 
 function formatLoadAlert(load) {
@@ -22,15 +22,8 @@ function formatLoadAlert(load) {
   ].join("\n\n");
 }
 
-async function sendTelegramMessage(text) {
-  const { telegramBotToken } = await getTelegramConfig();
-
-  if (!telegramBotToken) {
-    console.warn("SnipeDAT Telegram settings are missing.");
-    return { ok: false, error: "Missing Telegram settings" };
-  }
-
-  const result = await sendTelegramAlert(telegramBotToken, TELEGRAM_CHAT_ID, text);
+async function sendTelegramMessage(telegramBotToken, telegramChatId, text) {
+  const result = await sendTelegramAlert(telegramBotToken, telegramChatId, text);
 
   if (!result.ok) {
     throw new Error(result.error || "Telegram API request failed");
@@ -84,7 +77,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   const loads = Array.isArray(message.loads) ? message.loads : [];
 
-  Promise.all(loads.map((load) => sendTelegramMessage(formatLoadAlert(load))))
+  getTelegramConfig()
+    .then(({ telegramBotToken, telegramChatId }) => {
+      if (!telegramBotToken || !telegramChatId) {
+        console.warn("SnipeDAT Telegram settings are missing. User needs to configure settings.");
+        return [];
+      }
+
+      return Promise.all(
+        loads.map((load) =>
+          sendTelegramMessage(telegramBotToken, telegramChatId, formatLoadAlert(load))
+        )
+      );
+    })
     .then((results) => sendResponse({ ok: true, sent: results.length }))
     .catch((error) => {
       console.error("Failed to send SnipeDAT alert.", error);

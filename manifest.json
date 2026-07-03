@@ -26,5 +26,6 @@
   ],
   "action": {
     "default_title": "SnipeDAT"
-  }
+  },
+  "options_page": "options.html"
 }

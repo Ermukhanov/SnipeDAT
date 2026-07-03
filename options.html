@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>SnipeDAT Options</title>
+<style>body{font-family:Arial,sans-serif;max-width:500px;margin:50px auto;padding:20px;}input{width:100%;padding:8px;margin:10px 0;box-sizing:border-box;}button{padding:10px 20px;margin:5px 5px 5px 0;cursor:pointer;}#status{margin-top:20px;padding:10px;border-radius:4px;display:none;}#status.success{background:#d4edda;color:#155724;}#status.error{background:#f8d7da;color:#721c24;}</style>
+</head>
+<body>
+<h1>SnipeDAT Settings</h1>
+<form id="options">
+<label>Telegram Bot Token:</label>
+<input type="password" id="telegramBotToken" />
+<label>Telegram Chat ID:</label>
+<input type="text" id="telegramChatId" />
+<button type="button" onclick="saveOptions()">Save</button>
+<button type="button" onclick="resetOptions()">Reset</button>
+</form>
+<div id="status"></div>
+<script src="options.js"></script>
+</body>
+</html>
