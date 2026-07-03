@@ -30,25 +30,52 @@ async function sendTelegramMessage(text) {
     return { ok: false, error: "Missing Telegram settings" };
   }
 
-  const response = await fetch(`${TELEGRAM_API_BASE}/bot${telegramBotToken}/sendMessage`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text,
-      disable_web_page_preview: true
-    })
-  });
+  const result = await sendTelegramAlert(telegramBotToken, TELEGRAM_CHAT_ID, text);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Telegram API request failed: ${response.status} ${errorText}`);
+  if (!result.ok) {
+    throw new Error(result.error || "Telegram API request failed");
   }
 
-  return response.json();
+  return result;
 }
+
+async function sendTelegramAlert(token, chatId, message) {
+  try {
+    const response = await fetch(`${TELEGRAM_API_BASE}/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        disable_web_page_preview: true
+      })
+    });
+
+    const responseText = await response.text();
+    let responseBody;
+
+    try {
+      responseBody = responseText ? JSON.parse(responseText) : {};
+    } catch (_error) {
+      responseBody = { description: responseText };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: `Telegram API request failed: ${response.status} ${responseBody.description || ""}`.trim()
+      };
+    }
+
+    return responseBody;
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+}
+
+globalThis.sendTelegramAlert = sendTelegramAlert;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "SNIPE_DAT_LOADS_SCRAPED") {
