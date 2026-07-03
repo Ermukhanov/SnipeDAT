@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "SnipeDAT",
+  "version": "0.1.0",
+  "description": "Chrome extension MVP for monitoring DAT Power load board rows and sending matching load alerts via Telegram.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://power.dat.com/*",
+    "https://api.telegram.org/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://power.dat.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "SnipeDAT"
+  }
+}
