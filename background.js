@@ -1,13 +1,114 @@
 const TELEGRAM_API_BASE = "https://api.telegram.org";
+const DIESEL_MPG = 6.5;
+const DIESEL_PRICE_PER_GALLON = 4.00;
+const OPERATING_COST_PER_MILE = 0.40;
 
 async function getTelegramConfig() {
   // Credentials are saved by the options page in sync storage so they follow the user profile.
-  const { token, chat_id } = await chrome.storage.sync.get([
+  const { token, chat_id, broker_email, default_miles, default_deadhead_miles } = await chrome.storage.sync.get([
     "token",
-    "chat_id"
+    "chat_id",
+    "broker_email",
+    "default_miles",
+    "default_deadhead_miles"
   ]);
 
-  return { token, chat_id };
+  return { token, chat_id, broker_email, default_miles, default_deadhead_miles };
+}
+
+function parseNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return 0;
+  }
+
+  const parsed = Number.parseFloat(value.replace(/[$,]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function calculateFuelCost(miles) {
+  return (parseNumber(miles) / DIESEL_MPG) * DIESEL_PRICE_PER_GALLON;
+}
+
+function calculateDeadheadImpact(deadheadMiles) {
+  return calculateFuelCost(deadheadMiles);
+}
+
+function calculateOperatingCost(miles) {
+  return parseNumber(miles) * OPERATING_COST_PER_MILE;
+}
+
+function calculateNetProfit(rate, miles) {
+  const fuelCost = calculateFuelCost(miles);
+  const operatingCost = calculateOperatingCost(miles);
+
+  return parseNumber(rate) - (fuelCost + operatingCost);
+}
+
+function calculateTrueRpm(rate, miles) {
+  const numericMiles = parseNumber(miles);
+
+  if (numericMiles <= 0) {
+    return 0;
+  }
+
+  return calculateNetProfit(rate, numericMiles) / numericMiles;
+}
+
+function calculatePremiumFields(load) {
+  const miles = parseNumber(load.miles);
+  const deadheadMiles = parseNumber(load.deadhead_miles);
+  const rate = parseNumber(load.rate);
+  const fuelCost = calculateFuelCost(miles);
+  const deadheadImpact = calculateDeadheadImpact(deadheadMiles);
+  const operatingCost = calculateOperatingCost(miles);
+  const netProfit = calculateNetProfit(rate, miles);
+  const trueRpm = calculateTrueRpm(rate, miles);
+
+  return {
+    miles,
+    deadhead_miles: deadheadMiles,
+    rate,
+    fuel_cost: fuelCost,
+    deadhead_impact: deadheadImpact,
+    estimated_operating_cost: operatingCost,
+    estimated_net_profit: netProfit,
+    true_rpm: trueRpm
+  };
+}
+
+function formatCurrency(value) {
+  return `$${parseNumber(value).toFixed(2)}`;
+}
+
+function formatDecimal(value) {
+  return parseNumber(value).toFixed(2);
+}
+
+function getBrokerEmail(load) {
+  return (load.broker_email || "").trim();
+}
+
+function buildEmailBrokerMarkup(load) {
+  const brokerEmail = getBrokerEmail(load);
+
+  if (!brokerEmail) {
+    return undefined;
+  }
+
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: "Email Broker",
+          url: `mailto:${brokerEmail}`
+        }
+      ]
+    ]
+  };
 }
 
 function formatLoadAlert(load) {
@@ -16,15 +117,30 @@ function formatLoadAlert(load) {
   const rate = load.rate ? `\nRate: ${load.rate}` : "";
   const pickup = load.pickup ? `\nPickup: ${load.pickup}` : "";
   const equipment = load.equipment ? `\nEquipment: ${load.equipment}` : "";
+  const premium = calculatePremiumFields(load);
 
   return [
     "New DAT load alert",
-    `${origin} -> ${destination}${rate}${pickup}${equipment}`
+    [
+      `${origin} -> ${destination}${rate}${pickup}${equipment}`,
+      `Miles: ${formatDecimal(premium.miles)}`,
+      `Deadhead Miles: ${formatDecimal(premium.deadhead_miles)}`,
+      `Fuel Cost: ${formatCurrency(premium.fuel_cost)}`,
+      `Deadhead Impact: ${formatCurrency(premium.deadhead_impact)}`,
+      `Estimated Operating Cost: ${formatCurrency(premium.estimated_operating_cost)}`,
+      `Estimated Net Profit: ${formatCurrency(premium.estimated_net_profit)}`,
+      `True RPM: ${formatCurrency(premium.true_rpm)}`
+    ].join("\n")
   ].join("\n\n");
 }
 
-async function sendTelegramMessage(token, chatId, text) {
-  const result = await sendTelegramAlert(token, chatId, text);
+async function sendTelegramMessage(token, chatId, load) {
+  const result = await sendTelegramAlert(
+    token,
+    chatId,
+    formatLoadAlert(load),
+    buildEmailBrokerMarkup(load)
+  );
 
   if (!result.ok) {
     throw new Error(result.error || "Telegram API request failed");
@@ -33,7 +149,7 @@ async function sendTelegramMessage(token, chatId, text) {
   return result;
 }
 
-async function sendTelegramAlert(token, chatId, message) {
+async function sendTelegramAlert(token, chatId, message, replyMarkup) {
   try {
     const response = await fetch(`${TELEGRAM_API_BASE}/bot${token}/sendMessage`, {
       method: "POST",
@@ -43,7 +159,8 @@ async function sendTelegramAlert(token, chatId, message) {
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        disable_web_page_preview: true
+        disable_web_page_preview: true,
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {})
       })
     });
 
@@ -70,33 +187,51 @@ async function sendTelegramAlert(token, chatId, message) {
 }
 
 globalThis.sendTelegramAlert = sendTelegramAlert;
+globalThis.calculateFuelCost = calculateFuelCost;
+globalThis.calculateDeadheadImpact = calculateDeadheadImpact;
+globalThis.calculateNetProfit = calculateNetProfit;
+globalThis.calculateTrueRpm = calculateTrueRpm;
+globalThis.calculatePremiumFields = calculatePremiumFields;
+globalThis.formatLoadAlert = formatLoadAlert;
+globalThis.buildEmailBrokerMarkup = buildEmailBrokerMarkup;
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+function applyLoadDefaults(load, config) {
+  return {
+    ...load,
+    miles: load.miles ?? config.default_miles ?? "",
+    deadhead_miles: load.deadhead_miles ?? config.default_deadhead_miles ?? "",
+    broker_email: load.broker_email || config.broker_email || ""
+  };
+}
+
+if (globalThis.chrome?.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Content scripts send scraped load rows here; the service worker owns network I/O.
-  if (message?.type !== "SNIPE_DAT_LOADS_SCRAPED") {
-    return false;
-  }
+    if (message?.type !== "SNIPE_DAT_LOADS_SCRAPED") {
+      return false;
+    }
 
-  const loads = Array.isArray(message.loads) ? message.loads : [];
+    const loads = Array.isArray(message.loads) ? message.loads : [];
 
-  getTelegramConfig()
-    .then(({ token, chat_id }) => {
-      if (!token || !chat_id) {
-        console.warn("SnipeDAT Telegram settings are missing. User needs to configure settings.");
-        return [];
-      }
+    getTelegramConfig()
+      .then((config) => {
+        const { token, chat_id } = config;
 
-      return Promise.all(
-        loads.map((load) =>
-          sendTelegramMessage(token, chat_id, formatLoadAlert(load))
-        )
-      );
-    })
-    .then((results) => sendResponse({ ok: true, sent: results.length }))
-    .catch((error) => {
-      console.error("Failed to send SnipeDAT alert.", error);
-      sendResponse({ ok: false, error: error.message });
-    });
+        if (!token || !chat_id) {
+          console.warn("SnipeDAT Telegram settings are missing. User needs to configure settings.");
+          return [];
+        }
 
-  return true;
-});
+        return Promise.all(
+          loads.map((load) => sendTelegramMessage(token, chat_id, applyLoadDefaults(load, config)))
+        );
+      })
+      .then((results) => sendResponse({ ok: true, sent: results.length }))
+      .catch((error) => {
+        console.error("Failed to send SnipeDAT alert.", error);
+        sendResponse({ ok: false, error: error.message });
+      });
+
+    return true;
+  });
+}

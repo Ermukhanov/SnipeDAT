@@ -1,0 +1,33 @@
+2026-07-03 23:50:52,566 - __main__ - INFO - SnipeDAT AI Bot v1.0
+2026-07-03 23:50:52,566 - __main__ - INFO - httpx available: False
+2026-07-03 23:50:52,566 - __main__ - INFO - ======================================================================
+2026-07-03 23:50:52,566 - __main__ - INFO - SnipeDAT AI Bot - Full Integration Test
+2026-07-03 23:50:52,566 - __main__ - INFO - ======================================================================
+2026-07-03 23:50:52,566 - __main__ - INFO - OpenAI Parser initialized with model: gpt-4o-mini
+2026-07-03 23:50:52,566 - __main__ - INFO - Kazakhstan Registry initialized
+2026-07-03 23:50:52,566 - __main__ - INFO - Telegram Poller initialized
+2026-07-03 23:50:52,566 - __main__ - INFO - 
+--- Test Case 1 ---
+2026-07-03 23:50:52,566 - __main__ - INFO - Load: New Load: Los Angeles, CA to Dallas, TX. 45,000 lbs, Dry van...
+2026-07-03 23:50:52,566 - __main__ - INFO - BIN: 010101001234
+2026-07-03 23:50:52,566 - __main__ - WARNING - httpx not available, falling back to regex parsing
+2026-07-03 23:50:52,567 - __main__ - WARNING - httpx not available, returning mock result
+2026-07-03 23:50:52,567 - __main__ - INFO - ✅ Parsed: ASAP -> Dallas, TX, Weight=45,000 lbs, Type=Dry Van, Price=Rate: $3,500
+2026-07-03 23:50:52,567 - __main__ - INFO - ✅ Registry: Sample Transport Co. (active)
+2026-07-03 23:50:52,567 - __main__ - INFO - 
+--- Test Case 2 ---
+2026-07-03 23:50:52,567 - __main__ - INFO - Load: Flatbed load: Denver to Phoenix. 22 tons, Machinery. $2,800....
+2026-07-03 23:50:52,567 - __main__ - WARNING - httpx not available, falling back to regex parsing
+2026-07-03 23:50:52,568 - __main__ - INFO - ✅ Parsed:  -> Phoenix, Weight=22 tons, Type=Flatbed, Price=$2,800
+2026-07-03 23:50:52,568 - __main__ - INFO - 
+--- Test Case 3 ---
+2026-07-03 23:50:52,568 - __main__ - INFO - Load: Load from Almaty to Bishkek. 30 tons machinery. Rate: $2,500...
+2026-07-03 23:50:52,568 - __main__ - INFO - BIN: 123456789012
+2026-07-03 23:50:52,568 - __main__ - WARNING - httpx not available, falling back to regex parsing
+2026-07-03 23:50:52,568 - __main__ - WARNING - httpx not available, returning mock result
+2026-07-03 23:50:52,568 - __main__ - INFO - ✅ Parsed: Almaty -> Bishkek, Weight=30 tons, Type=Machinery, Price=Rate: $2,500
+2026-07-03 23:50:52,568 - __main__ - INFO - ✅ Registry: None (unknown)
+2026-07-03 23:50:52,568 - __main__ - INFO - 
+======================================================================
+2026-07-03 23:50:52,568 - __main__ - INFO - ✅ All test cases completed
+2026-07-03 23:50:52,568 - __main__ - INFO - ======================================================================

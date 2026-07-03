@@ -13,6 +13,40 @@ function normalizeText(value) {
   return value?.replace(/\s+/g, " ").trim() || "";
 }
 
+function parseNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const parsed = Number.parseFloat(value.replace(/[$,]/g, ""));
+  return Number.isFinite(parsed) ? parsed : "";
+}
+
+function firstNumericValue(...values) {
+  return values.find((value) => value !== "" && value !== null && value !== undefined) ?? "";
+}
+
+function findNumberNearLabel(text, labels) {
+  for (const label of labels) {
+    const match = text.match(new RegExp(`\\b${label}\\b\\s*:?\\s*([\\d,.]+)`, "i"));
+
+    if (match) {
+      return parseNumber(match[1]);
+    }
+  }
+
+  return "";
+}
+
+function findBrokerEmail(text) {
+  const match = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? match[0] : "";
+}
+
 function getRowId(row, index) {
   return (
     row.getAttribute("data-load-id") ||
@@ -24,6 +58,21 @@ function getRowId(row, index) {
 function parseLoadRow(row, index) {
   const cells = Array.from(row.querySelectorAll("[role='cell'], td"));
   const values = cells.map((cell) => normalizeText(cell.textContent));
+  const rawText = normalizeText(row.textContent);
+  const miles = firstNumericValue(
+    parseNumber(row.getAttribute("data-miles")),
+    findNumberNearLabel(rawText, ["trip miles", "miles", "mi"]),
+    parseNumber(values[5])
+  );
+  const deadhead_miles = firstNumericValue(
+    parseNumber(row.getAttribute("data-deadhead-miles")),
+    parseNumber(row.getAttribute("data-deadhead")),
+    findNumberNearLabel(rawText, ["deadhead miles", "deadhead", "dh"]),
+    parseNumber(values[6])
+  );
+  const broker_email =
+    row.getAttribute("data-broker-email") ||
+    findBrokerEmail(rawText);
 
   return {
     id: getRowId(row, index),
@@ -32,7 +81,10 @@ function parseLoadRow(row, index) {
     pickup: values[2] || "",
     equipment: values[3] || "",
     rate: values[4] || "",
-    rawText: normalizeText(row.textContent),
+    miles,
+    deadhead_miles,
+    broker_email,
+    rawText,
     scrapedAt: new Date().toISOString()
   };
 }
