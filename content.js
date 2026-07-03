@@ -13,6 +13,31 @@ function normalizeText(value) {
   return value?.replace(/\s+/g, " ").trim() || "";
 }
 
+function findEmail(text) {
+  return text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
+}
+
+function findValueByLabel(text, labels) {
+  const labelPattern = labels.join("|");
+  const match = text.match(
+    new RegExp(`(?:${labelPattern})\\s*:?\\s*\\$?([\\d,]+(?:\\.\\d+)?)\\s*(?:mi|mile|miles)?`, "i")
+  );
+
+  return match?.[1] || "";
+}
+
+function getOptionalLoadFields(values, rawText) {
+  const miles =
+    values[5] ||
+    findValueByLabel(rawText, ["loaded miles", "trip miles", "miles", "mi"]);
+  const deadheadMiles =
+    values[6] ||
+    findValueByLabel(rawText, ["deadhead", "dh", "origin deadhead"]);
+  const brokerEmail = findEmail(values.find(findEmail) || rawText);
+
+  return { miles, deadheadMiles, brokerEmail };
+}
+
 function getRowId(row, index) {
   return (
     row.getAttribute("data-load-id") ||
@@ -24,6 +49,8 @@ function getRowId(row, index) {
 function parseLoadRow(row, index) {
   const cells = Array.from(row.querySelectorAll("[role='cell'], td"));
   const values = cells.map((cell) => normalizeText(cell.textContent));
+  const rawText = normalizeText(row.textContent);
+  const optionalFields = getOptionalLoadFields(values, rawText);
 
   return {
     id: getRowId(row, index),
@@ -32,7 +59,10 @@ function parseLoadRow(row, index) {
     pickup: values[2] || "",
     equipment: values[3] || "",
     rate: values[4] || "",
-    rawText: normalizeText(row.textContent),
+    miles: optionalFields.miles,
+    deadheadMiles: optionalFields.deadheadMiles,
+    brokerEmail: optionalFields.brokerEmail,
+    rawText,
     scrapedAt: new Date().toISOString()
   };
 }
