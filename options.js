@@ -1,38 +1,53 @@
 document.addEventListener("DOMContentLoaded", loadOptions);
 
+const tokenInput = document.getElementById("token");
+const chatIdInput = document.getElementById("chat_id");
+const form = document.getElementById("options-form");
+const resetButton = document.getElementById("reset");
+const status = document.getElementById("status");
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  saveOptions();
+});
+
+resetButton.addEventListener("click", resetOptions);
+
 function loadOptions() {
-  chrome.storage.local.get(["telegramBotToken", "telegramChatId"], (result) => {
-    if (result.telegramBotToken) document.getElementById("telegramBotToken").value = result.telegramBotToken;
-    if (result.telegramChatId) document.getElementById("telegramChatId").value = result.telegramChatId;
+  // Load saved Telegram credentials from Chrome profile sync storage.
+  chrome.storage.sync.get(["token", "chat_id"], (result) => {
+    tokenInput.value = result.token || "";
+    chatIdInput.value = result.chat_id || "";
   });
 }
 
 function saveOptions() {
-  const token = document.getElementById("telegramBotToken").value;
-  const chatId = document.getElementById("telegramChatId").value;
-  
-  if (!token || !chatId) {
+  const token = tokenInput.value.trim();
+  const chat_id = chatIdInput.value.trim();
+
+  if (!token || !chat_id) {
     showStatus("Please fill in both fields", "error");
     return;
   }
-  
-  chrome.storage.local.set({ telegramBotToken: token, telegramChatId: chatId }, () => {
-    showStatus("Settings saved successfully!", "success");
+
+  chrome.storage.sync.set({ token, chat_id }, () => {
+    showStatus("Settings saved.", "success");
   });
 }
 
 function resetOptions() {
-  chrome.storage.local.remove(["telegramBotToken", "telegramChatId"], () => {
-    document.getElementById("telegramBotToken").value = "";
-    document.getElementById("telegramChatId").value = "";
-    showStatus("Settings reset", "success");
+  chrome.storage.sync.remove(["token", "chat_id"], () => {
+    tokenInput.value = "";
+    chatIdInput.value = "";
+    showStatus("Settings reset.", "success");
   });
 }
 
 function showStatus(message, type) {
-  const status = document.getElementById("status");
   status.textContent = message;
   status.className = type;
   status.style.display = "block";
-  setTimeout(() => { status.style.display = "none"; }, 3000);
+  setTimeout(() => {
+    status.style.display = "none";
+  }, 3000);
 }

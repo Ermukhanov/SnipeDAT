@@ -5,6 +5,7 @@ const SEEN_LOAD_IDS_LIMIT = 500;
 const seenLoadIds = new Set();
 
 function randomDelay(minMs, maxMs) {
+  // Randomized polling keeps the stub from hammering dynamic load board pages.
   return Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
 }
 
@@ -37,6 +38,7 @@ function parseLoadRow(row, index) {
 }
 
 function findLoadRows() {
+  // TODO: Replace these generic selectors with confirmed DAT load board selectors.
   return Array.from(
     document.querySelectorAll("[role='row'], table tbody tr, [data-testid*='load']")
   ).filter((row) => normalizeText(row.textContent));
@@ -54,6 +56,7 @@ function rememberLoadId(loadId) {
 }
 
 async function scrapeAndSendLoads() {
+  // Stub scraper: parse visible row-like elements and send newly seen rows to the service worker.
   const newLoads = findLoadRows()
     .map(parseLoadRow)
     .filter((load) => {
@@ -78,6 +81,7 @@ async function scrapeAndSendLoads() {
 function scheduleNextScrape() {
   const delayMs = randomDelay(MIN_POLL_DELAY_MS, MAX_POLL_DELAY_MS);
 
+  // Re-schedule with a fresh random interval after every scrape attempt.
   window.setTimeout(async () => {
     if (document.visibilityState === "visible") {
       await scrapeAndSendLoads();

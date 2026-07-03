@@ -1,12 +1,13 @@
 const TELEGRAM_API_BASE = "https://api.telegram.org";
 
 async function getTelegramConfig() {
-  const { telegramBotToken, telegramChatId } = await chrome.storage.local.get([
-    "telegramBotToken",
-    "telegramChatId"
+  // Credentials are saved by the options page in sync storage so they follow the user profile.
+  const { token, chat_id } = await chrome.storage.sync.get([
+    "token",
+    "chat_id"
   ]);
 
-  return { telegramBotToken, telegramChatId };
+  return { token, chat_id };
 }
 
 function formatLoadAlert(load) {
@@ -22,8 +23,8 @@ function formatLoadAlert(load) {
   ].join("\n\n");
 }
 
-async function sendTelegramMessage(telegramBotToken, telegramChatId, text) {
-  const result = await sendTelegramAlert(telegramBotToken, telegramChatId, text);
+async function sendTelegramMessage(token, chatId, text) {
+  const result = await sendTelegramAlert(token, chatId, text);
 
   if (!result.ok) {
     throw new Error(result.error || "Telegram API request failed");
@@ -71,6 +72,7 @@ async function sendTelegramAlert(token, chatId, message) {
 globalThis.sendTelegramAlert = sendTelegramAlert;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  // Content scripts send scraped load rows here; the service worker owns network I/O.
   if (message?.type !== "SNIPE_DAT_LOADS_SCRAPED") {
     return false;
   }
@@ -78,15 +80,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const loads = Array.isArray(message.loads) ? message.loads : [];
 
   getTelegramConfig()
-    .then(({ telegramBotToken, telegramChatId }) => {
-      if (!telegramBotToken || !telegramChatId) {
+    .then(({ token, chat_id }) => {
+      if (!token || !chat_id) {
         console.warn("SnipeDAT Telegram settings are missing. User needs to configure settings.");
         return [];
       }
 
       return Promise.all(
         loads.map((load) =>
-          sendTelegramMessage(telegramBotToken, telegramChatId, formatLoadAlert(load))
+          sendTelegramMessage(token, chat_id, formatLoadAlert(load))
         )
       );
     })
