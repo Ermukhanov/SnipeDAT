@@ -1,12 +1,12 @@
 const TELEGRAM_API_BASE = "https://api.telegram.org";
+const TELEGRAM_CHAT_ID = "6561112046";
 
 async function getTelegramConfig() {
-  const { telegramBotToken, telegramChatId } = await chrome.storage.local.get([
-    "telegramBotToken",
-    "telegramChatId"
+  const { telegramBotToken } = await chrome.storage.local.get([
+    "telegramBotToken"
   ]);
 
-  return { telegramBotToken, telegramChatId };
+  return { telegramBotToken };
 }
 
 function formatLoadAlert(load) {
@@ -23,9 +23,9 @@ function formatLoadAlert(load) {
 }
 
 async function sendTelegramMessage(text) {
-  const { telegramBotToken, telegramChatId } = await getTelegramConfig();
+  const { telegramBotToken } = await getTelegramConfig();
 
-  if (!telegramBotToken || !telegramChatId) {
+  if (!telegramBotToken) {
     console.warn("SnipeDAT Telegram settings are missing.");
     return { ok: false, error: "Missing Telegram settings" };
   }
@@ -36,7 +36,7 @@ async function sendTelegramMessage(text) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      chat_id: telegramChatId,
+      chat_id: TELEGRAM_CHAT_ID,
       text,
       disable_web_page_preview: true
     })
